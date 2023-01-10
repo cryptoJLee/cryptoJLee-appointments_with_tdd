@@ -17,6 +17,7 @@ describe("CustomerForm", () => {
   const blankCustomer = {
     firstName: "",
     lastName: "",
+    phoneNumber: "",
   }
 
   const itRendersAsATextBox = (fieldName) =>
