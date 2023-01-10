@@ -8,7 +8,33 @@ const appointmentTimeOfDay = (startsAt) => {
 }
 
 export const Appointment = ({ customer }) => (
-  <div>{customer.firstName}</div>
+  <>
+    <div>Today's appointment at {appointmentTimeOfDay(customer.startsAt)}</div>
+    <table>
+      <tbody>
+        <tr>
+          <td>Customer</td>
+          <td>{`${customer.firstName} ${customer.lastName}`}</td>
+        </tr>
+        <tr>
+          <td>Phone number</td>
+          <td>{customer.phoneNumber}</td>
+        </tr>
+        <tr>
+          <td>Stylist</td>
+          <td>{customer.stylist}</td>
+        </tr>
+        <tr>
+          <td>Service</td>
+          <td>{customer.service}</td>
+        </tr>
+        <tr>
+          <td>Notes</td>
+          <td>{customer.notes}</td>
+        </tr>
+      </tbody>
+    </table>
+  </>
 );
 
 export const AppointmentsDayView = ({ appointments }) => {

@@ -5,13 +5,11 @@ import {
   AppointmentsDayView,
 } from "../src/AppointmentsDayView";
 import { act } from "react-dom/test-utils";
+import { container, initializeReactContainer } from "./reactTestExtensions";
 
 describe("Appointment", () => {
-  let container;
-
   beforeEach(() => {
-    container = document.createElement("div");
-    document.body.replaceChildren(container);
+    initializeReactContainer();
   });
 
   const render = component =>
@@ -30,10 +28,51 @@ describe("Appointment", () => {
     render(<Appointment customer={customer} />);
     expect(document.body.textContent).toContain("Jordan");
   });
+
+  it("renders the customer last name", () => {
+    const customer = { firstName: "Ashley", lastName: "Kelling" };
+    render(<Appointment customer={customer} />);
+    expect(document.body.textContent).toContain("Ashley Kelling");
+  });
+
+  it("renders the customer phone number", () => {
+    const customer = { phoneNumber: "(554) 338-1814" };
+    render(<Appointment customer={customer} />);
+    expect(document.body.textContent).toContain("(554) 338-1814");
+  });
+
+  it("renders the customer stylist", () => {
+    const customer = { stylist: "Maggie" };
+    render(<Appointment customer={customer} />);
+    expect(document.body.textContent).toContain("Maggie");
+  });
+
+  it("renders the customer service", () => {
+    const customer = { service: "Beard trim" };
+    render(<Appointment customer={customer} />);
+    expect(document.body.textContent).toContain("Beard trim");
+  });
+
+  it("renders the customer notes", () => {
+    const customer = { notes: "some notes" };
+    render(<Appointment customer={customer} />);
+    expect(document.body.textContent).toContain("some notes");
+  });
+
+  it("renders the customer notes", () => {
+    const customer = { notes: "some notes" };
+    render(<Appointment customer={customer} />);
+    expect(document.body.textContent).toContain("some notes");
+  });
+
+  it("renders the start time", () => {
+    const customer = { startsAt: new Date().setHours(9, 0) };
+    render(<Appointment customer={customer} />);
+    expect(document.body.textContent).toContain("appointment at 09:00");
+  });
 });
 
 describe("AppointmentsDayView", () => {
-  let container;
   const today = new Date();
   const twoAppointments = [
     {
@@ -47,8 +86,7 @@ describe("AppointmentsDayView", () => {
   ]
 
   beforeEach(() => {
-    container = document.createElement("div");
-    document.body.replaceChildren(container);
+    initializeReactContainer();
   });
 
   const render = component =>
