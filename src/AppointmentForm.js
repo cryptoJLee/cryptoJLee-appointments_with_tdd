@@ -138,6 +138,12 @@ export const AppointmentForm = ({
       })),
     []
   )
+  const handleServiceChange = (event) => setAppointment(
+    (appointment) => ({
+      ...appointment,
+      service: event.target.value
+    })
+  );
   const handleSubmit = (event) => {
     event.preventDefault();
     onSubmit(appointment);
@@ -145,10 +151,12 @@ export const AppointmentForm = ({
 
   return (
     <form onSubmit={handleSubmit}>
+      <label htmlFor="service">Salon service</label>
       <select
+        id="service"
         name="service"
-        value={original.service}
-        readOnly
+        value={appointment.service}
+        onChange={handleServiceChange}
       >
         <option />
         {selectableServices.map(s => (

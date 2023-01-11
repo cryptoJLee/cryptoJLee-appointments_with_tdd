@@ -12,6 +12,10 @@ import {
   textOf,
   typesOf
 } from "./reactTestExtensions";
+import {
+  today,
+  todayAt
+} from "./builders/time";
 
 describe("Appointment", () => {
   const blankCustomer = {
@@ -90,14 +94,13 @@ describe("Appointment", () => {
 });
 
 describe("AppointmentsDayView", () => {
-  const today = new Date();
   const twoAppointments = [
     {
-      startsAt: today.setHours(12, 0),
+      startsAt: todayAt(12),
       customer: { firstName: "Ashley" },
     },
     {
-      startsAt: today.setHours(13, 0),
+      startsAt: todayAt(13),
       customer: { firstName: "Jordan" },
     },
   ]
