@@ -121,6 +121,8 @@ const TimeSlotTable = ({
 };
 export const AppointmentForm = ({
   selectableServices,
+  selectableStylists,
+  serviceStylists,
   original,
   salonOpensAt,
   salonClosesAt,
@@ -144,10 +146,24 @@ export const AppointmentForm = ({
       service: event.target.value
     })
   );
+  const handleStylistChange = (event) => setAppointment(
+    (appointment) => ({
+      ...appointment,
+      stylist: event.target.value
+    })
+  );
   const handleSubmit = (event) => {
     event.preventDefault();
     onSubmit(appointment);
   };
+  const stylistsForService = appointment.service
+    ? serviceStylists[appointment.service]
+    : selectableStylists;
+  const timeSlotsForStylist = appointment.stylist
+    ? availableTimeSlots.filter((slot) =>
+      slot.stylists.includes(appointment.stylist)
+    )
+    : availableTimeSlots;
 
   return (
     <form onSubmit={handleSubmit}>
@@ -163,11 +179,25 @@ export const AppointmentForm = ({
           <option key={s}>{s}</option>
         ))}
       </select>
+      <label htmlFor="stylist">Stylist</label>
+      <select
+        id="stylist"
+        name="stylist"
+        value={appointment.stylist}
+        onChange={handleStylistChange}
+      >
+        <option />
+        {
+          stylistsForService.map(s => (
+            <option key={s}>{s}</option>
+          ))
+        }
+      </select>
       <TimeSlotTable
         salonOpensAt={salonOpensAt}
         salonClosesAt={salonClosesAt}
         today={today}
-        availableTimeSlots={availableTimeSlots}
+        availableTimeSlots={timeSlotsForStylist}
         checkedTimeSlot={appointment.startsAt}
         handleChange={handleStartsAtChange}
       />
@@ -183,6 +213,18 @@ AppointmentForm.defaultProps = {
   selectableServices: [
     "Cut",
     "Blow-dry",
-    "Cut & color"
-  ]
+    "Cut & color",
+    "Beard trim",
+    "Cut & beard trim",
+    "Extensions",
+  ],
+  selectableStylists: ["Ashley", "Jo", "Pat", "Sam"],
+  serviceStylists: {
+    Cut: ["Ashley", "Jo", "Pat", "Sam"],
+    "Blow-dry": ["Ashley", "Jo", "Pat", "Sam"],
+    "Cut & color": ["Ashley", "Jo"],
+    "Beard trim": ["Pat", "Sam"],
+    "Cut & beard trim": ["Pat", "Sam"],
+    Extensions: ["Ashley", "Pat"],
+  },
 }

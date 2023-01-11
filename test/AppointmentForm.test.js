@@ -23,16 +23,25 @@ describe("AppointmentForm", () => {
     initializeReactContainer();
   });
   const availableTimeSlots = [
-    { startsAt: todayAt(9) },
-    { startsAt: todayAt(9, 30) },
+    {
+      startsAt: todayAt(9),
+      stylists: ["Ashley", "Jo"],
+    },
+    {
+      startsAt: todayAt(9, 30),
+      stylists: ["Ashley"],
+    },
   ];
   const blankAppointment = {
     service: "",
+    stylist: "",
   };
   const services = ["Cut", "Blow-dry"];
+  const stylists = ["Ashley", "Jo"];
   const testProps = {
     today,
     selectableServices: services,
+    selectableStylists: stylists,
     availableTimeSlots,
     original: blankAppointment,
   };
@@ -223,6 +232,40 @@ describe("AppointmentForm", () => {
 
   });
 
+  describe("stylist field", () => {
+    itRendersAsASelectBox("stylist");
+    itInitiallyHasABlankValueChosen("stylist");
+    itPreselectsExistingValue("stylist", "Jo");
+    itRendersALabel("stylist", "Stylist");
+    itAssignsAnIdThatMatchesTheLabelId("stylist");
+    itSubmitsExistingValue("stylist", "Jo");
+    itSubmitsNewValue("stylist", "Jo");
+
+    it("lists only stylists that can perform the selected service", () => {
+      const selectableServices = ["1", "2"];
+      const selectableStylists = ["A", "B", "C"];
+      const serviceStylists = {
+        1: ["A", "B"],
+      };
+
+      const appointment = { service: "1" };
+
+      render(
+        <AppointmentForm
+          {...testProps}
+          original={appointment}
+          selectableServices={selectableServices}
+          selectableStylists={selectableStylists}
+          serviceStylists={serviceStylists}
+        />
+      );
+
+      expect(
+        labelsOfAllOptions(field("stylist"))
+      ).toEqual(expect.arrayContaining(["A", "B"]));
+    });
+  });
+
   describe("time slot table", () => {
 
     it("renders a table for time slots with an id", () => {
@@ -322,6 +365,30 @@ describe("AppointmentForm", () => {
         />
       );
       expect(startsAtField(1).checked).toEqual(true);
-    })
+    });
+
+    it("filters appointments by selected stylist", () => {
+      const availableTimeSlots = [
+        {
+          startsAt: todayAt(9),
+          stylists: ["Ashley"],
+        },
+        {
+          startsAt: todayAt(9, 30),
+          stylists: ["Jo"],
+        },
+      ];
+
+      render(
+        <AppointmentForm
+          {...testProps}
+          availableTimeSlots={availableTimeSlots}
+        />
+      );
+
+      change(field("stylist"), "Jo");
+
+      expect(cellsWithRadioButtons()).toEqual([7]);
+    });
   });
 });
