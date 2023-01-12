@@ -10,6 +10,7 @@ import {
   click,
   labelFor,
   change,
+  clickAndWait,
 } from "./reactTestExtensions";
 import { AppointmentForm } from "../src/AppointmentForm";
 import {
@@ -17,10 +18,15 @@ import {
   todayAt,
   tomorrowAt
 } from "./builders/time";
+import { fetchResponseError, fetchResponseOk } from "./builders/fetch";
+import { bodyOfLastFetchRequest } from "./spyHelpers";
 
 describe("AppointmentForm", () => {
   beforeEach(() => {
     initializeReactContainer();
+    jest.
+      spyOn(global, "fetch")
+      .mockResolvedValue(fetchResponseOk({}));
   });
   const availableTimeSlots = [
     {
@@ -69,8 +75,7 @@ describe("AppointmentForm", () => {
     expect(submitButton()).not.toBeNull();
   });
 
-  it("saves existing value when submitted", () => {
-    expect.hasAssertions();
+  it("saves existing value when submitted", async () => {
     const appointment = {
       startsAt: availableTimeSlots[1].startsAt
     };
@@ -78,16 +83,14 @@ describe("AppointmentForm", () => {
       <AppointmentForm
         {...testProps}
         original={appointment}
-        onSubmit={({ startsAt }) =>
-          expect(startsAt).toEqual(availableTimeSlots[1].startsAt)
-        }
+        onSave={() => { }}
       />
     );
-    click(submitButton());
+    await clickAndWait(submitButton());
+    expect(bodyOfLastFetchRequest()).toMatchObject(appointment);
   });
 
-  it("saves new value when submitted", () => {
-    expect.hasAssertions();
+  it("saves new value when submitted", async () => {
     const appointment = {
       startsAt: availableTimeSlots[0].startsAt
     };
@@ -95,15 +98,14 @@ describe("AppointmentForm", () => {
       <AppointmentForm
         {...testProps}
         original={appointment}
-        onSubmit={({ startsAt }) =>
-          expect(startsAt).toEqual(
-            availableTimeSlots[1].startsAt
-          )
-        }
+        onSave={() => { }}
       />
     );
     click(startsAtField(1));
-    click(submitButton());
+    await clickAndWait(submitButton());
+    expect(bodyOfLastFetchRequest()).toMatchObject({
+      startsAt: availableTimeSlots[1].startsAt
+    });
   })
 
   const itRendersAsASelectBox = (fieldName) => {
@@ -176,37 +178,134 @@ describe("AppointmentForm", () => {
     fieldName,
     existing
   ) => {
-    it("saves existing value when submitted", () => {
-      expect.hasAssertions();
+    it("saves existing value when submitted", async () => {
       const appointment = { [fieldName]: existing };
       render(
         <AppointmentForm
           {...testProps}
           original={appointment}
-          onSubmit={(props) =>
-            expect(props[fieldName]).toEqual(existing)
-          }
+          onSave={() => { }}
         />
       );
-      click(submitButton());
+      await clickAndWait(submitButton());
+      expect(bodyOfLastFetchRequest()).toMatchObject(appointment);
     });
   };
 
   const itSubmitsNewValue = (fieldName, newValue) => {
-    it("saves new value when submitted", () => {
-      expect.hasAssertions();
+    it("saves new value when submitted", async () => {
       render(
         <AppointmentForm
           {...testProps}
-          onSubmit={(props) =>
-            expect(props[fieldName]).toEqual(newValue)
-          }
+          original={blankAppointment}
+          onSave={() => { }}
         />
       );
       change(field(fieldName), newValue);
-      click(submitButton());
+      await clickAndWait(submitButton());
+      expect(bodyOfLastFetchRequest()).toMatchObject({
+        [fieldName]: newValue
+      });
     });
   };
+
+  it("sends request to POST /appointments when submitting the form", async () => {
+    render(
+      <AppointmentForm
+        {...testProps}
+        onSave={() => { }}
+      />
+    );
+    await clickAndWait(submitButton());
+    expect(global.fetch).toBeCalledWith(
+      "/appointments",
+      expect.objectContaining({
+        method: "POST",
+      })
+    );
+  })
+
+  it("calls fetch with the right configuration", async () => {
+    render(
+      <AppointmentForm
+        {...testProps}
+        onSave={() => { }}
+      />
+    );
+    await clickAndWait(submitButton());
+    expect(global.fetch).toBeCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+  })
+
+  it("notifies onSave when form is submitted", async () => {
+    const appointment = {
+      startsAt: availableTimeSlots[1].startsAt
+    };
+    global.fetch.mockResolvedValue(fetchResponseOk(appointment));
+    const saveSpy = jest.fn();
+
+    render(
+      <AppointmentForm
+        {...testProps}
+        original={appointment}
+        onSave={saveSpy}
+      />
+    );
+    await clickAndWait(submitButton());
+    expect(saveSpy).toBeCalled();
+  })
+
+  it("renders an alert space", async () => {
+    render(<AppointmentForm {...testProps} />);
+    expect(element("[role=alert]")).not.toBeNull();
+  })
+
+  it("initially have no text in the alert space", async () => {
+    render(<AppointmentForm {...testProps} />);
+    expect(element("[role=alert]")).not.toContainText("error occurred");
+  })
+
+  describe("when POST request returns an error", () => {
+    beforeEach(() => {
+      global.fetch.mockResolvedValue(fetchResponseError());
+    })
+    it("does not notify onSave", async () => {
+      const saveSpy = jest.fn();
+
+      render(
+        <AppointmentForm
+          {...testProps}
+          onSave={saveSpy}
+        />
+      );
+      await clickAndWait(submitButton());
+      expect(saveSpy).not.toBeCalled();
+    })
+    it("renders error message", async () => {
+
+      render(<AppointmentForm {...testProps} />);
+      await clickAndWait(submitButton());
+
+      expect(element("[role=alert]")).toContainText("error occurred");
+    })
+    it("error is cleared when the form is submitted with all validation errors corrected", async () => {
+      global.fetch.mockResolvedValueOnce(
+        fetchResponseError()
+      );
+      global.fetch.mockResolvedValue(fetchResponseOk());
+      render(<AppointmentForm {...testProps} onSave={() => { }} />);
+      await clickAndWait(submitButton());
+      expect(element("[role=alert]")).toContainText("error occurred");
+      await clickAndWait(submitButton());
+      expect(element("[role=alert]")).not.toContainText("error occurred");
+    })
+  });
+
 
   describe("service field", () => {
     itRendersAsASelectBox("service");

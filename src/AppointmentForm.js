@@ -47,6 +47,12 @@ const mergeDateAndTime = (date, timeSlot) => {
   );
 };
 
+const Error = ({ hasError }) => (
+  <p role="alert">
+    {hasError ? "An error occurred during save." : ""}
+  </p>
+);
+
 const RadioButtonIfAvailable = ({
   availableTimeSlots,
   date,
@@ -128,10 +134,11 @@ export const AppointmentForm = ({
   salonClosesAt,
   today,
   availableTimeSlots,
-  onSubmit,
+  onSave,
 }
 ) => {
   const [appointment, setAppointment] = useState(original);
+  const [error, setError] = useState(false);
   const handleStartsAtChange = useCallback(
     ({ target: { value } }) =>
       setAppointment((appointment) => ({
@@ -152,9 +159,25 @@ export const AppointmentForm = ({
       stylist: event.target.value
     })
   );
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
-    onSubmit(appointment);
+    const result = await global.fetch(
+      "/appointments",
+      {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(appointment),
+      }
+    );
+    if (result.ok) {
+      setError(false);
+      onSave();
+    } else {
+      setError(true);
+    }
   };
   const stylistsForService = appointment.service
     ? serviceStylists[appointment.service]
@@ -167,6 +190,7 @@ export const AppointmentForm = ({
 
   return (
     <form onSubmit={handleSubmit}>
+      <Error hasError={error} />
       <label htmlFor="service">Salon service</label>
       <select
         id="service"
