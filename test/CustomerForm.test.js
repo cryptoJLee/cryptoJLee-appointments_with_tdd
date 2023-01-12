@@ -5,16 +5,52 @@ import {
   form,
   field,
   element,
-  click,
   submit,
   submitButton,
   change,
   labelFor,
+  clickAndWait,
 } from "./reactTestExtensions";
 import { CustomerForm } from "../src/CustomerForm";
 
+let returnValue;
+const spy = () => {
+  let receivedArguments;
+  return {
+    fn: (...arg) => {
+      receivedArguments = arg;
+      return returnValue;
+    },
+    stubReturnValue: value => returnValue = value,
+    receivedArguments: () => receivedArguments,
+    receivedArgument: n => receivedArguments[n]
+  };
+};
+const fetchResponseOk = (body) =>
+  Promise.resolve({
+    ok: true,
+    json: () => Promise.resolve(body)
+  });
+const fetchResponseError = () =>
+  Promise.resolve({ ok: false });
+
 describe("CustomerForm", () => {
-  beforeEach(() => initializeReactContainer());
+  const originalFetch = global.fetch;
+  let fetchSpy;
+
+  beforeEach(() => {
+    initializeReactContainer();
+    fetchSpy = spy();
+    global.fetch = fetchSpy.fn;
+    fetchSpy.stubReturnValue(fetchResponseOk({}));
+  });
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  const bodyOfLastFetchRequest = () =>
+    JSON.parse(fetchSpy.receivedArgument(1).body);
+
   const blankCustomer = {
     firstName: "",
     lastName: "",
@@ -23,7 +59,7 @@ describe("CustomerForm", () => {
 
   const itRendersAsATextBox = (fieldName) =>
     it("renders as a text box", () => {
-      render(<CustomerForm original={blankCustomer} />);
+      render(<CustomerForm original={blankCustomer} onSave={() => { }} />);
       expect(field(fieldName)).toBeInputFieldOfType("text");
     });
   const itIncludesTheExistingValue = (
@@ -51,30 +87,20 @@ describe("CustomerForm", () => {
       expect(field(fieldName).id).toEqual(fieldName);
     })
   const itSubmitsExistingValue = (fieldName, value) =>
-    it("saves existing value when submitted", () => {
-      expect.hasAssertions();
+    it("saves existing value when submitted", async () => {
       const customer = { [fieldName]: value };
-      render(
-        <CustomerForm
-          original={customer}
-          onSubmit={(props) =>
-            expect(props[fieldName]).toEqual(value)
-          }
-        />
-      );
-      click(submitButton());
+      render(<CustomerForm original={customer} onSave={() => { }} />);
+      await clickAndWait(submitButton());
+      expect(bodyOfLastFetchRequest()).toMatchObject(customer);
     });
   const itSubmitsNewValue = (fieldName, value) =>
-    it("saves new value when submitted", () => {
-      expect.hasAssertions();
-      render(
-        <CustomerForm
-          original={blankCustomer}
-          onSubmit={(props) => expect(props[fieldName]).toEqual(value)}
-        />
-      );
+    it("saves new value when submitted", async () => {
+      render(<CustomerForm original={blankCustomer} onSave={() => { }} />);
       change(field(fieldName), value);
-      click(submitButton());
+      await clickAndWait(submitButton());
+      expect(bodyOfLastFetchRequest()).toMatchObject({
+        [fieldName]: value,
+      })
     });
   it("renders a form", () => {
     render(<CustomerForm original={blankCustomer} />);
@@ -113,16 +139,86 @@ describe("CustomerForm", () => {
     expect(submitButton()).not.toBeNull();
   })
 
-  it("prevents the default action when submitting the form", () => {
+  it("sends request to POST /customers when submitting the form", async () => {
     render(
       <CustomerForm
         original={blankCustomer}
-        onSubmit={() => { }}
+        onSave={() => { }}
       />
     );
-
-    const event = submit(form());
-    expect(event.defaultPrevented).toBe(true);
+    await clickAndWait(submitButton());
+    expect(fetchSpy).toBeCalledWith(
+      "/customers",
+      expect.objectContaining({
+        method: "POST",
+      })
+    );
   })
 
+  it("calls fetch with the right configuration", async () => {
+    render(
+      <CustomerForm
+        original={blankCustomer}
+        onSave={() => { }}
+      />
+    );
+    await clickAndWait(submitButton());
+    expect(fetchSpy).toBeCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+  })
+
+  it("notifies onSave when form is submitted", async () => {
+    const customer = { id: 123 };
+    fetchSpy.stubReturnValue(fetchResponseOk(customer));
+    const saveSpy = spy();
+
+    render(
+      <CustomerForm
+        original={customer}
+        onSave={saveSpy.fn}
+      />
+    );
+    await clickAndWait(submitButton());
+    expect(saveSpy).toBeCalledWith(customer);
+  })
+
+  describe("when POST request returns an error", () => {
+    beforeEach(() => {
+      fetchSpy.stubReturnValue(fetchResponseError());
+    })
+    it("does not notify onSave", async () => {
+      const saveSpy = spy();
+
+      render(
+        <CustomerForm
+          original={blankCustomer}
+          onSave={saveSpy.fn}
+        />
+      );
+      await clickAndWait(submitButton());
+      expect(saveSpy).not.toBeCalledWith();
+    })
+    it("renders error message", async () => {
+
+      render(<CustomerForm original={blankCustomer} />);
+      await clickAndWait(submitButton());
+
+      expect(element("[role=alert]")).toContainText("error occurred");
+    })
+  });
+
+  it("renders an alert space", async () => {
+    render(<CustomerForm original={blankCustomer} />);
+    expect(element("[role=alert]")).not.toBeNull();
+  })
+
+  it("initially have no text in the alert space", async () => {
+    render(<CustomerForm original={blankCustomer} />);
+    expect(element("[role=alert]")).not.toContainText("error occurred");
+  })
 });

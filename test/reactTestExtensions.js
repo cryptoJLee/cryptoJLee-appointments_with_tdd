@@ -61,3 +61,6 @@ export const change = (target, value) => {
 }
 
 export const labelFor = (fieldName) => element(`label[for=${fieldName}]`);
+
+export const clickAndWait = async (element) =>
+  act(async () => click(element));
