@@ -19,6 +19,7 @@ import {
   tomorrowAt
 } from "./builders/time";
 import { fetchResponseError, fetchResponseOk } from "./builders/fetch";
+import { blankAppointment } from "./builders/appointment";
 import { bodyOfLastFetchRequest } from "./spyHelpers";
 
 describe("AppointmentForm", () => {
@@ -38,10 +39,7 @@ describe("AppointmentForm", () => {
       stylists: ["Ashley"],
     },
   ];
-  const blankAppointment = {
-    service: "",
-    stylist: "",
-  };
+
   const services = ["Cut", "Blow-dry"];
   const stylists = ["Ashley", "Jo"];
   const testProps = {
@@ -107,6 +105,21 @@ describe("AppointmentForm", () => {
       startsAt: availableTimeSlots[1].startsAt
     });
   })
+
+  it("submits customer(ID) when submitted", async () => {
+    const appointment = {
+      customer: 123
+    };
+    render(
+      <AppointmentForm
+        {...testProps}
+        original={appointment}
+        onSave={() => { }}
+      />
+    );
+    await clickAndWait(submitButton());
+    expect(bodyOfLastFetchRequest()).toMatchObject(appointment);
+  });
 
   const itRendersAsASelectBox = (fieldName) => {
     it("renders as a select box", () => {

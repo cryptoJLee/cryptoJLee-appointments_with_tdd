@@ -15,6 +15,7 @@ import {
   fetchResponseOk,
   fetchResponseError
 } from "./builders/fetch";
+import { blankCustomer } from "./builders/customer";
 import { bodyOfLastFetchRequest } from "./spyHelpers";
 import { CustomerForm } from "../src/CustomerForm";
 
@@ -26,12 +27,6 @@ describe("CustomerForm", () => {
       .spyOn(global, "fetch")
       .mockResolvedValue(fetchResponseOk({}));
   });
-
-  const blankCustomer = {
-    firstName: "",
-    lastName: "",
-    phoneNumber: "",
-  }
 
   const itRendersAsATextBox = (fieldName) =>
     it("renders as a text box", () => {

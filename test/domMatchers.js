@@ -6,6 +6,9 @@ import {
   toBeRenderedWithProps,
   toBeFirstRenderedWithProps
 } from "./matchers/toBeRenderedWithProps";
+import {
+  toBeRendered
+} from "./matchers/toBeRendered";
 
 expect.extend({
   toContainText,
@@ -14,4 +17,5 @@ expect.extend({
   toBeElementWithTag,
   toBeRenderedWithProps,
   toBeFirstRenderedWithProps,
+  toBeRendered,
 });
