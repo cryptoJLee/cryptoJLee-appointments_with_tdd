@@ -10,6 +10,7 @@ import {
   change,
   labelFor,
   clickAndWait,
+  withFocus,
 } from "./reactTestExtensions";
 import {
   fetchResponseOk,
@@ -200,5 +201,77 @@ describe("CustomerForm", () => {
   it("initially have no text in the alert space", async () => {
     render(<CustomerForm original={blankCustomer} />);
     expect(element("[role=alert]")).not.toContainText("error occurred");
+  })
+
+  const errorFor = (fieldName) =>
+    element(`#${fieldName}Error[role=alert]`);
+
+  describe("validation", () => {
+    const itRendersAlertForFieldValidation = (fieldName) => {
+      it(`renders an alert space for ${fieldName} validation errors`, () => {
+        render(<CustomerForm original={blankCustomer} />);
+        expect(errorFor(fieldName)).not.toBeNull();
+      });
+    };
+    itRendersAlertForFieldValidation("firstName");
+
+    const itSetsAlertAsAccessibleDescriptionForField = (fieldName) => {
+      it(`sets alert as the accessible description for the ${fieldName} field`, () => {
+        render(<CustomerForm original={blankCustomer} />);
+        expect(
+          field(fieldName).getAttribute("aria-describedby")
+        ).toEqual(`${fieldName}Error`);
+      });
+    };
+    itSetsAlertAsAccessibleDescriptionForField("firstName");
+
+    const itInvalidatesFieldWithValue = (
+      fieldName,
+      value,
+      description
+    ) => {
+      it(`displays error after blur when ${fieldName} field is '${value}'`, () => {
+        render(<CustomerForm original={blankCustomer} />);
+        withFocus(field(fieldName), () =>
+          change(field(fieldName), value)
+        );
+        expect(
+          errorFor(fieldName)
+        ).toContainText(description);
+      })
+    };
+    itInvalidatesFieldWithValue("firstName", " ", "First name is required");
+
+    const itInitiallyHasNoTextInTheAlertSpace = (fieldName) => {
+      it(`initially has no text in the ${fieldName} field alert space`, async () => {
+        render(<CustomerForm original={blankCustomer} />);
+        expect(
+          errorFor(fieldName).textContent
+        ).toEqual("");
+      });
+    };
+    itInitiallyHasNoTextInTheAlertSpace("firstName");
+
+    itRendersAlertForFieldValidation("lastName");
+    itSetsAlertAsAccessibleDescriptionForField("lastName");
+    itInvalidatesFieldWithValue("lastName", " ", "Last name is required");
+    itInitiallyHasNoTextInTheAlertSpace("lastName");
+
+    itRendersAlertForFieldValidation("phoneNumber");
+    itSetsAlertAsAccessibleDescriptionForField("phoneNumber");
+    itInvalidatesFieldWithValue(
+      "phoneNumber",
+      "invalid",
+      "Only numbers, spaces and these symbols are allowed: ( ) + -"
+    );
+    itInitiallyHasNoTextInTheAlertSpace("phoneNumber");
+
+    it("accepts standard phone number characters when validating", () => {
+      render(<CustomerForm original={blankCustomer} />);
+      withFocus(field("phoneNumber"), () =>
+        change(field("phoneNumber"), "0123456789+()- ")
+      );
+      expect(errorFor("phoneNumber")).not.toContainText("Only numbers");
+    })
   })
 });
