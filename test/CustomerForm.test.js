@@ -11,12 +11,14 @@ import {
   labelFor,
   clickAndWait,
   withFocus,
+  textOf,
+  elements,
 } from "./reactTestExtensions";
 import {
   fetchResponseOk,
   fetchResponseError
 } from "./builders/fetch";
-import { blankCustomer } from "./builders/customer";
+import { blankCustomer, validCustomer } from "./builders/customer";
 import { bodyOfLastFetchRequest } from "./spyHelpers";
 import { CustomerForm } from "../src/CustomerForm";
 
@@ -60,17 +62,18 @@ describe("CustomerForm", () => {
     })
   const itSubmitsExistingValue = (fieldName, value) =>
     it("saves existing value when submitted", async () => {
-      const customer = { [fieldName]: value };
+      const customer = { ...validCustomer, [fieldName]: value };
       render(<CustomerForm original={customer} onSave={() => { }} />);
       await clickAndWait(submitButton());
       expect(bodyOfLastFetchRequest()).toMatchObject(customer);
     });
   const itSubmitsNewValue = (fieldName, value) =>
     it("saves new value when submitted", async () => {
-      render(<CustomerForm original={blankCustomer} onSave={() => { }} />);
+      render(<CustomerForm original={validCustomer} onSave={() => { }} />);
       change(field(fieldName), value);
       await clickAndWait(submitButton());
       expect(bodyOfLastFetchRequest()).toMatchObject({
+        ...validCustomer,
         [fieldName]: value,
       })
     });
@@ -114,7 +117,7 @@ describe("CustomerForm", () => {
   it("sends request to POST /customers when submitting the form", async () => {
     render(
       <CustomerForm
-        original={blankCustomer}
+        original={validCustomer}
         onSave={() => { }}
       />
     );
@@ -130,7 +133,7 @@ describe("CustomerForm", () => {
   it("calls fetch with the right configuration", async () => {
     render(
       <CustomerForm
-        original={blankCustomer}
+        original={validCustomer}
         onSave={() => { }}
       />
     );
@@ -145,7 +148,7 @@ describe("CustomerForm", () => {
   })
 
   it("notifies onSave when form is submitted", async () => {
-    const customer = { id: 123 };
+    const customer = { ...validCustomer };
     global.fetch.mockResolvedValue(fetchResponseOk(customer));
     const saveSpy = jest.fn();
 
@@ -168,7 +171,7 @@ describe("CustomerForm", () => {
 
       render(
         <CustomerForm
-          original={blankCustomer}
+          original={validCustomer}
           onSave={saveSpy}
         />
       );
@@ -177,14 +180,14 @@ describe("CustomerForm", () => {
     })
     it("renders error message", async () => {
 
-      render(<CustomerForm original={blankCustomer} />);
+      render(<CustomerForm original={validCustomer} />);
       await clickAndWait(submitButton());
 
       expect(element("[role=alert]")).toContainText("error occurred");
     })
     it("error is cleared when the form is submitted with all validation errors corrected", async () => {
 
-      render(<CustomerForm original={blankCustomer} onSave={() => { }} />);
+      render(<CustomerForm original={validCustomer} onSave={() => { }} />);
       await clickAndWait(submitButton());
       expect(element("[role=alert]")).toContainText("error occurred");
       global.fetch.mockResolvedValue(fetchResponseOk({}));
@@ -273,5 +276,19 @@ describe("CustomerForm", () => {
       );
       expect(errorFor("phoneNumber")).not.toContainText("Only numbers");
     })
+  })
+
+  it("does not submit the form when there are validation errors", async () => {
+    render(<CustomerForm original={blankCustomer} />);
+    await clickAndWait(submitButton());
+    expect(global.fetch).not.toBeCalled();
+  })
+
+  it("renders validation errors after submission fails", async () => {
+    render(<CustomerForm original={blankCustomer} />);
+    await clickAndWait(submitButton());
+    expect(
+      textOf(elements("[role=alert]"))
+    ).not.toEqual("");
   })
 });
