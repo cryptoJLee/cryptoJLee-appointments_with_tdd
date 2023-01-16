@@ -33,6 +33,7 @@ export const CustomerForm = ({
   const [customer, setCustomer] = useState(original);
   const [error, setError] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
+  const [submitting, setSubmitting] = useState(false);
 
   const handleBlur = ({ target }) => {
 
@@ -45,28 +46,49 @@ export const CustomerForm = ({
     });
   };
 
-  const handleChange = ({ target }) =>
+  const handleChange = ({ target }) => {
     setCustomer((customer) => ({
       ...customer,
       [target.name]: target.value
     }));
+    if (hasError(validationErrors, target.name)) {
+      const result = validateMany(validators, {
+        [target.name]: target.value
+      });
+      setValidationErrors({
+        ...validationErrors,
+        ...result,
+      });
+    }
+  }
+
+  const doSave = async () => {
+    setSubmitting(true);
+    const result = await global.fetch("/customers", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(customer),
+    });
+    setSubmitting(false);
+    if (result.ok) {
+      setError(false);
+      const customerWithId = await result.json();
+      onSave(customerWithId);
+    } else if (result.status === 422) {
+      const response = await result.json();
+      setValidationErrors(response.errors);
+    }
+    else {
+      setError(true);
+    }
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     const validationResult = validateMany(validators, customer);
     if (!anyErrors(validationResult)) {
-      const result = await global.fetch("/customers", {
-        method: "POST",
-        credentials: "same-origin",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(customer),
-      });
-      if (result.ok) {
-        setError(false);
-        const customerWithId = await result.json();
-        onSave(customerWithId);
-      } else {
-        setError(true);
-      }
+      await doSave();
     } else {
       setValidationErrors(validationResult);
     }
@@ -117,7 +139,10 @@ export const CustomerForm = ({
         aria-describedby="phoneNumberError"
       />
       {renderError("phoneNumber")}
-      <input type="submit" value="Add" />
+      <input type="submit" value="Add" disabled={submitting} />
+      {submitting ? (
+        <span className="submittingIndicator" />
+      ) : null}
     </form>
   );
 };

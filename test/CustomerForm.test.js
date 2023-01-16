@@ -1,14 +1,15 @@
 import React from "react";
+import { act } from "react-dom/test-utils";
 import {
   initializeReactContainer,
   render,
   form,
   field,
   element,
-  submit,
   submitButton,
   change,
   labelFor,
+  click,
   clickAndWait,
   withFocus,
   textOf,
@@ -147,6 +148,20 @@ describe("CustomerForm", () => {
     );
   })
 
+  it("renders field validation errors from server", async () => {
+    const errors = {
+      phoneNumber: "Phone number already exists in the system"
+    };
+    global.fetch.mockResolvedValue(
+      fetchResponseError(422, { errors })
+    );
+    render(<CustomerForm original={validCustomer} />);
+    await clickAndWait(submitButton());
+    expect(errorFor("phoneNumber")).toContainText(
+      errors.phoneNumber
+    );
+  })
+
   it("notifies onSave when form is submitted", async () => {
     const customer = { ...validCustomer };
     global.fetch.mockResolvedValue(fetchResponseOk(customer));
@@ -255,10 +270,45 @@ describe("CustomerForm", () => {
     };
     itInitiallyHasNoTextInTheAlertSpace("firstName");
 
+    const itClearsValidationErrorsWhenChange = (
+      fieldName,
+      correctValue,
+    ) => {
+      it("clears validation error when the user corrects", () => {
+        render(<CustomerForm original={blankCustomer} />);
+        withFocus(field(fieldName), () =>
+          change(field(fieldName), "")
+        );
+        change(field(fieldName), correctValue);
+        expect(
+          errorFor(fieldName).textContent
+        ).toEqual("");
+      });
+    };
+    itClearsValidationErrorsWhenChange("firstName", "s");
+
+    const itDoesNotInvalidateFieldOnKeypress = (
+      fieldName,
+      fieldValue
+    ) => {
+      it(`does not invalidate ${fieldName} field on keypress`, async () => {
+        render(
+          <CustomerForm original={validCustomer} />
+        );
+        change(field(fieldName), fieldValue);
+        expect(
+          errorFor(fieldName).textContent
+        ).toEqual("");
+      });
+    };
+    itDoesNotInvalidateFieldOnKeypress("firstName", "");
+
     itRendersAlertForFieldValidation("lastName");
     itSetsAlertAsAccessibleDescriptionForField("lastName");
     itInvalidatesFieldWithValue("lastName", " ", "Last name is required");
     itInitiallyHasNoTextInTheAlertSpace("lastName");
+    itClearsValidationErrorsWhenChange("lastName", "s");
+    itDoesNotInvalidateFieldOnKeypress("lastName", "");
 
     itRendersAlertForFieldValidation("phoneNumber");
     itSetsAlertAsAccessibleDescriptionForField("phoneNumber");
@@ -268,6 +318,8 @@ describe("CustomerForm", () => {
       "Only numbers, spaces and these symbols are allowed: ( ) + -"
     );
     itInitiallyHasNoTextInTheAlertSpace("phoneNumber");
+    itClearsValidationErrorsWhenChange("phoneNumber", "1");
+    itDoesNotInvalidateFieldOnKeypress("phoneNumber", "");
 
     it("accepts standard phone number characters when validating", () => {
       render(<CustomerForm original={blankCustomer} />);
@@ -290,5 +342,67 @@ describe("CustomerForm", () => {
     expect(
       textOf(elements("[role=alert]"))
     ).not.toEqual("");
+  })
+
+  describe("submitting indicator", () => {
+    it("displays when form is submitting", async () => {
+      render(
+        <CustomerForm
+          original={validCustomer}
+          onSave={() => { }}
+        />
+      );
+      click(submitButton());
+      await act(async () => {
+        expect(
+          element("span.submittingIndicator")
+        ).not.toBeNull();
+      });
+    })
+
+    it("initially does not display the submitting indicator", () => {
+      render(<CustomerForm original={validCustomer} />);
+      expect(element(".submittingIndicator")).toBeNull();
+    })
+
+    it("hides after submission", async () => {
+      render(
+        <CustomerForm
+          original={validCustomer}
+          onSave={() => { }}
+        />
+      );
+      await clickAndWait(submitButton());
+      expect(element(".submittingIndicator")).toBeNull();
+    })
+  });
+
+  describe("submit button", () => {
+    it("renders a submit button", () => {
+      render(
+        <CustomerForm original={blankCustomer} />
+      );
+      expect(submitButton()).not.toBeNull();
+    });
+
+    it("disables the submit button when submitting", async () => {
+      render(
+        <CustomerForm
+          original={validCustomer}
+          onSave={() => { }}
+        />
+      );
+      click(submitButton());
+      await act(async () => {
+        expect(submitButton().disabled).toBeTruthy();
+      });
+    })
+
+    it("initially does not disable submit button", () => {
+      render(
+        <CustomerForm original={validCustomer} />
+      );
+      expect(submitButton().disabled).toBeFalsy();
+    })
   })
 });
