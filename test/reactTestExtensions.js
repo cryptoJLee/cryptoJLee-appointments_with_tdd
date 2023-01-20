@@ -20,6 +20,14 @@ export const renderAndWait = (component) =>
   act(async () => (
     reactRoot.render(component)
   ));
+
+export const renderAdditional = (component) => {
+  const container = document.createElement("div");
+  act(() =>
+    ReactDOM.createRoot(container).render(component)
+  );
+  return container;
+}
 export const click = element =>
   act(() => element.click()
   );
@@ -89,3 +97,6 @@ export const buttonWithLabel = (label) =>
   elements("button").find(
     ({ textContent }) => textContent === label
   );
+
+export const changeAndWait = async (target, value) =>
+  act(async () => change(target, value));

@@ -5,6 +5,7 @@ import {
   AppointmentsDayViewLoader
 } from "./AppointmentsDayViewLoader";
 import { CustomerForm } from "./CustomerForm";
+import { CustomerSearch } from "./CustomerSearch";
 
 const blankCustomer = {
   firstName: "",
@@ -33,13 +34,28 @@ export const App = () => {
   const transitionToDayView = useCallback(
     () => setView("dayView"),
     []
-  )
+  );
+  const transitionToSearchCustomers = useCallback(
+    () => setView("searchCustomers"),
+    []
+  );
+  const searchActions = (customer) => (
+    <button
+      onClick={() => transitionToAddAppointment(customer)}
+    >Create appointment</button>
+  );
   switch (view) {
     case "addCustomer":
       return (
         <CustomerForm
           original={blankCustomer}
           onSave={transitionToAddAppointment}
+        />
+      );
+    case "searchCustomers":
+      return (
+        <CustomerSearch
+          renderCustomerActions={searchActions}
         />
       );
     case "addAppointment":
@@ -61,6 +77,13 @@ export const App = () => {
                 type="button"
                 onClick={transitionToAddCustomer}>
                 Add customer and appointment
+              </button>
+            </li>
+            <li>
+              <button
+                type="button"
+                onClick={transitionToSearchCustomers}>
+                Search customers
               </button>
             </li>
           </menu>
